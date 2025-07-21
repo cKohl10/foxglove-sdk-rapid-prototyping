@@ -1,0 +1,5 @@
+foxglove-sdk
+opencv-python
+numpy
+spatialmath-python
+pin
