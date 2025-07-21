@@ -9,6 +9,9 @@ from foxglove.schemas import RawImage, Timestamp, FrameTransforms, FrameTransfor
 
 WORLD_FRAME_ID = "world"
 
+class PandaRobot:
+    def __init__(self, name):
+        self.name = name
 class Robot:
     def __init__(self, urdf_path, name):
         self.name = name
