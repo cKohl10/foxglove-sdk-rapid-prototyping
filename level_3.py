@@ -7,12 +7,76 @@ import pinocchio as pin
 from foxglove.channels import RawImageChannel
 from foxglove.schemas import RawImage, Timestamp, FrameTransforms, FrameTransform, Vector3, Quaternion
 
+WORLD_FRAME_ID = "world"
+
 class Robot:
     def __init__(self, urdf_path, name):
         self.name = name
         self.urdf_path = urdf_path
         self.model = pin.buildModelFromUrdf(urdf_path)
-        print(self.robot)
+        self.data  = self.model.createData()
+        self.base_frame_id = f"{name}_base"
+
+        #DEBUGGING
+        for i in range(self.model.njoints):
+            joint_name = self.model.names[i]
+            joint_placement = self.data.oMf[i]
+            print(f"Joint: {joint_name}, Placement: {joint_placement}")
+            # Further processing to extract specific joint information (e.g., angles)
+
+    def fk(self, joint_values):
+        pin.forwardKinematics(self.model, self.data, joint_values)
+        pin.updateFramePlacements(self.model, self.data)
+
+        transforms = []
+        transforms.append(
+            FrameTransform(
+                parent_frame_id=WORLD_FRAME_ID,
+                child_frame_id=self.base_frame_id,
+                translation=Vector3(x=0.0, y=0.0, z=0.0),
+                rotation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+            )
+        )
+
+        for j in range(1, self.model.njoints):    # loop over real joints
+            # child link (BODY-frame) created by joint j
+            child_fid = self.body_frame_of_joint.get(j)
+            if child_fid is None:
+                continue
+            child_name = self.model.frames[child_fid].name
+
+            # parent link = BODY frame of parent joint *or* world
+            parent_j   = self.model.parents[j]
+            parent_fid = self.body_frame_of_joint.get(parent_j)
+            if parent_fid is None:    # root link
+                parent_name = "world"
+                T_parent_child = self.data.oMf[child_fid]
+            else:
+                parent_name = self.model.frames[parent_fid].name
+                T_parent_child = self.data.oMf[parent_fid].inverse() * self.data.oMf[child_fid]  
+
+            # build & send TransformStamped
+            quat = pin.Quaternion(T_parent_child.rotation)  
+
+            transforms.append(
+                FrameTransform(
+                    parent_frame_id=parent_name,
+                    child_frame_id=child_name,
+                    translation=Vector3(x=float(T_parent_child.x),
+                                        y=float(T_parent_child.y),
+                                        z=float(T_parent_child.z)),
+
+                    rotation=Quaternion(x=float(quat.x), 
+                                        y=float(quat.y), 
+                                        z=float(quat.z), 
+                                        w=float(quat.w))
+                )
+            )
+
+        foxglove.log(
+            "/tf",
+            FrameTransforms(transforms=transforms)
+        )
 
         
 
