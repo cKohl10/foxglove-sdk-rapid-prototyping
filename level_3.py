@@ -5,8 +5,8 @@ import cv2
 import time
 import numpy as np
 import pinocchio as pin
-from foxglove.channels import RawImageChannel
-from foxglove.schemas import RawImage, Timestamp, FrameTransforms, FrameTransform, Vector3, Quaternion
+from foxglove.channels import RawImageChannel, CameraCalibrationChannel
+from foxglove.schemas import RawImage, Timestamp, FrameTransforms, FrameTransform, Vector3, Quaternion, CameraCalibration
 
 WORLD_FRAME_ID = "world"
 
@@ -101,6 +101,7 @@ class Camera:
         self.cam = cv2.VideoCapture(cam)
         self.name = f"cam{cam}"
         self.channel = RawImageChannel("/"+self.name)
+        self.calibration_channel = CameraCalibrationChannel("/"+self.name+"/info")
 
         # Get the default frame width and height
         self.frame_width = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -144,20 +145,20 @@ if __name__ == "__main__":
     if args.write is not None:
         writer = foxglove.open_mcap(args.write, allow_overwrite=True)
 
-    # cam_indices = [0, 1, 2]  # Adjust camera indices as needed
-    # cams = [Camera(cam_indices[i]) for i in range(len(cam_indices))]
+    cam_indices = [0, 1, 2]  # Adjust camera indices as needed
+    cams = [Camera(cam_indices[i]) for i in range(len(cam_indices))]
 
-    panda = Robot("urdf/fp3.urdf", "fp3", [0.0, 0.0, 0.0])
+    panda = Robot("urdf/fp3_1.urdf", "fp3_1", [0.0, 0.0, 0.0])
 
     try:
         print("Streaming data...")
         while True:
-            # for cam in cams:
-            #     img_msg = cam.get_frame()
-            #     if img_msg is not None:
-            #         cam.log_data(img_msg)
+            for cam in cams:
+                img_msg = cam.get_frame()
+                if img_msg is not None:
+                    cam.log_data(img_msg)
 
-            joint_values = panda.controller()
+            joint_values = np.array([0.0, 0.0, 0.0, -1.570796326794897, 0.0, 1.570796326794897, 0.7853981633974483, 0.0, 0.0])
 
             panda.update(joint_values)
             
@@ -165,6 +166,6 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\nShutting down cameras...")
-        # for cam in cams:
-        #     cam.close()
+        for cam in cams:
+            cam.close()
         print("Cleanup complete.")
