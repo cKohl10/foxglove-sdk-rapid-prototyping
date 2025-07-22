@@ -125,6 +125,11 @@ class Camera:
         )
         return img_msg
 
+    def get_intrinsics(self, config):
+        with open(config, 'r') as f:
+            intrinsics = yaml.safe_load(f)
+        return intrinsics
+
     def log_data(self, data):
         self.channel.log(data)
 
