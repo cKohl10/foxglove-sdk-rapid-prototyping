@@ -1,4 +1,4 @@
 foxglove-sdk
 opencv-python
 numpy==1.26.4
-pin
+pin==2.7.0

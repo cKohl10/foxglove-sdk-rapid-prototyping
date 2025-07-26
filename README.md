@@ -18,3 +18,9 @@ Cameras and robots
 ```bash 
 python3 level_3.py -w cameras_and_robots.mcap
 ```
+
+# Dataset: RH20T https://ieeexplore.ieee.org/document/10611615
+
+## Robot URLs
+UR10: https://cdn.jsdelivr.net/gh/cKohl10/robot_descriptions@main/urdf/ur10.urdf
+Franka Panda: https://cdn.jsdelivr.net/gh/cKohl10/robot_descriptions@main/urdf/fp3_1.urdf

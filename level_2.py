@@ -41,7 +41,7 @@ class Robot:
 
             frame_name = frame.name
             frame_id = self.model.getFrameId(frame_name)
-            parent_joint_id = frame.parentJoint
+            parent_joint_id = frame.parent
 
             if parent_joint_id == 0:  # Root joint
                 parent_frame_id = WORLD_FRAME_ID
