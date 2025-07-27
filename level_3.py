@@ -3,6 +3,7 @@ import argparse
 import logging
 import cv2
 import time
+import os
 import numpy as np
 import pinocchio as pin
 from foxglove.channels import RawImageChannel, CameraCalibrationChannel
@@ -28,7 +29,13 @@ class Robot:
 
         return q
 
-    def update(self, q):
+    def update(self, q, timestamp=None):
+        if timestamp is None:
+            timestamp = Timestamp(
+                sec=int(time.time()),
+                nsec=int((time.time() - int(time.time())) * 1e9),
+            )
+
         pin.forwardKinematics(self.model, self.data, q)
         pin.updateFramePlacements(self.model, self.data)
 
@@ -47,6 +54,7 @@ class Robot:
                 parent_frame_id = WORLD_FRAME_ID
                 transforms.append(
                     FrameTransform(
+                        timestamp=timestamp,
                         parent_frame_id=parent_frame_id,
                         child_frame_id=frame_name,
                         translation=Vector3(x=self.base_translation[0], y=self.base_translation[1], z=self.base_translation[2]),
@@ -77,6 +85,7 @@ class Robot:
 
             transforms.append(
                 FrameTransform(
+                    timestamp=timestamp,
                     parent_frame_id=parent_frame_id,
                     child_frame_id=frame_name,
                     translation=Vector3(x=float(translation[0]),
@@ -94,29 +103,51 @@ class Robot:
             FrameTransforms(transforms=transforms)
         )
 
-    def load_joint_data(self, joint_data):
+    def preload_joint_data(self, joint_data, serial_number):
+        # Joint angles, {serial number: {timestamp: joint angle array}}
+        for timestamp, joint_angles in joint_data[serial_number].items():
+            self.update(joint_angles, timestamp)
+                
 
         
 
-class Camera:
-    def __init__(self, cam):
-        self.cam = cv2.VideoCapture(cam)
-        self.name = f"cam{cam}"
+class PreloadedCamera:
+    def __init__(self, serial_num, calib_dir, task_dir):
+        self.serial_num = serial_num
+        self.name = f"cam_{serial_num}"
+
+        # Check that camera data exists
+        if not os.path.exists(f"{task_dir}/cam_{serial_num}/color"):
+            print(f"Camera {serial_num} data not found in {task_dir}")
+            return None
+
         self.channel = RawImageChannel("/"+self.name)
         self.calibration_channel = CameraCalibrationChannel("/"+self.name+"/info")
+        self.calib_dir = calib_dir
+        self.task_dir = task_dir
+        self.img_dir = f"{task_dir}/cam_{serial_num}/color"
 
         # Get the default frame width and height
-        self.frame_width = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.frame_height = int(self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.frame_width = 640
+        self.frame_height = 360
 
-    def get_frame(self):
-        ret, frame = self.cam.read()
-        if not ret:
+        self.calibrate()
+        self.load_imgs()
+
+        print(f"Camera {self.serial_num} loaded into MCAP")
+
+    def load_frame(self, timestamp):
+        frame = cv2.imread(f"{self.img_dir}/{timestamp}.jpg")
+        if frame is None:
             return None
+        
+        sec = int(timestamp // 1e3)
+        nsec = int((timestamp % 1e3) * 1e6)
+        
         img_msg = RawImage(
             timestamp=Timestamp(
-                sec=int(time.time()),
-                nsec=int((time.time() - int(time.time())) * 1e9),
+                sec=sec,
+                nsec=nsec,
             ),
             frame_id=self.name,
             width=self.frame_width,
@@ -125,15 +156,32 @@ class Camera:
             step=self.frame_width*3,
             data=frame.tobytes(),
         )
-        return img_msg
+        return img_msg, timestamp
 
-    def get_intrinsics(self, config):
-        with open(config, 'r') as f:
-            intrinsics = yaml.safe_load(f)
-        return intrinsics
+    def load_imgs(self):
+        for img_file in os.listdir(self.img_dir):
+            timestamp = int(img_file.split(".")[0])
+            img_msg, timestamp = self.load_frame(timestamp)
+            if img_msg is not None:
+                self.channel.log(img_msg, log_time=timestamp)
 
-    def log_data(self, data):
-        self.channel.log(data)
+    def calibrate(self):
+        intrinsics = np.load(self.calib_dir + "/intrinsics.npy", allow_pickle=True)
+        extrinsics = np.load(self.calib_dir + "/extrinsics.npy", allow_pickle=True)
+
+        # Intrinsic Calibration
+        P = intrinsics.item().get(self.serial_num)
+        K = P[:3, :3]
+
+        # Extrinsic Calibration
+        T_cam_world = extrinsics.item().get(self.serial_num)
+
+        # Publish the calibration data
+        self.calibration_channel.log(CameraCalibration(
+            camera_name=self.name,
+            camera_intrinsics=K,
+            camera_extrinsics=T_cam_world,
+        ))
 
     def close(self):
         self.cam.release()
@@ -142,37 +190,18 @@ class Camera:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Stream camera data')
-    parser.add_argument('-w', '--write', type=str, default=None, help='MCAP save location')
+
+    robot_name = "franka"
+
+    parser = argparse.ArgumentParser(description='Convert RH20T dataset to MCAP')
+    parser.add_argument('-t', '--task_name', type=str, default=f"data/{robot_name}/task_0111", help='Task directory')
     args = parser.parse_args()
 
     foxglove.set_log_level(logging.INFO)
-    
-    server = foxglove.start_server()
-    if args.write is not None:
-        writer = foxglove.open_mcap(args.write, allow_overwrite=True)
 
-    cam_indices = [0, 1, 2]  # Adjust camera indices as needed
-    cams = [Camera(cam_indices[i]) for i in range(len(cam_indices))]
+    writer = foxglove.open_mcap(args.task_name+"/data.mcap", allow_overwrite=True)
 
-    panda = Robot("urdf/fp3_1.urdf", "fp3_1", [0.0, 0.0, 0.0])
+    cam_SN = np.load(f"data/{robot_name}/calib/devices.npy", allow_pickle=True)
+    cams = [PreloadedCamera(cam_SN[i], f"data/{robot_name}/calib", args.task_name) for i in range(len(cam_SN)-1)]
 
-    try:
-        print("Streaming data...")
-        while True:
-            for cam in cams:
-                img_msg = cam.get_frame()
-                if img_msg is not None:
-                    cam.log_data(img_msg)
-
-            joint_values = np.array([0.0, 0.0, 0.0, -1.570796326794897, 0.0, 1.570796326794897, 0.7853981633974483, 0.0, 0.0])
-
-            panda.update(joint_values)
-            
-            time.sleep(0.01)  # Small delay to prevent overwhelming the system
-
-    except KeyboardInterrupt:
-        print("\nShutting down cameras...")
-        for cam in cams:
-            cam.close()
-        print("Cleanup complete.")
+    panda = Robot("urdf/fp3.urdf", "fp3", [0.0, 0.0, 0.0])
