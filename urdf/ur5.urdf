@@ -62,8 +62,8 @@
         added the base_link_inertia link that carries the visual, collision and inertia
         information.
     -->
-  <link name="base_link"/>
-  <link name="base_link_inertia">
+  <link name="ur5_link0"/>
+  <link name="ur5_link0_inertia">
     <visual>
       <origin rpy="0.0 0.0 3.141592653589793" xyz="0.0 0.0 0.0"/>
       <geometry>
@@ -82,7 +82,7 @@
       <inertia ixx="0.00443333156" ixy="0.0" ixz="0.0" iyy="0.00443333156" iyz="0.0" izz="0.0072"/>
     </inertial>
   </link>
-  <link name="shoulder_link">
+  <link name="ur5_link1">
     <visual>
       <origin rpy="0.0 0.0 3.141592653589793" xyz="0.0 0.0 0.0"/>
       <geometry>
@@ -101,7 +101,7 @@
       <inertia ixx="0.014972358333333331" ixy="0" ixz="0" iyy="0.014972358333333331" iyz="0" izz="0.01040625"/>
     </inertial>
   </link>
-  <link name="upper_arm_link">
+  <link name="ur5_link2">
     <visual>
       <origin rpy="1.5707963267948966 0.0 -1.5707963267948966" xyz="0.0 0.0 0.13585"/>
       <geometry>
@@ -120,7 +120,7 @@
       <inertia ixx="0.13388583541666665" ixy="0" ixz="0" iyy="0.13388583541666665" iyz="0" izz="0.0151074"/>
     </inertial>
   </link>
-  <link name="forearm_link">
+  <link name="ur5_link3">
     <visual>
       <origin rpy="1.5707963267948966 0.0 -1.5707963267948966" xyz="0.0 0.0 0.0165"/>
       <geometry>
@@ -139,7 +139,7 @@
       <inertia ixx="0.031216803515624995" ixy="0" ixz="0" iyy="0.031216803515624995" iyz="0" izz="0.004095"/>
     </inertial>
   </link>
-  <link name="wrist_1_link">
+  <link name="ur5_link4">
     <visual>
       <origin rpy="1.5707963267948966 0.0 0.0" xyz="0.0 0.0 -0.093"/>
       <geometry>
@@ -158,7 +158,7 @@
       <inertia ixx="0.002013889583333333" ixy="0" ixz="0" iyy="0.002013889583333333" iyz="0" izz="0.0021942"/>
     </inertial>
   </link>
-  <link name="wrist_2_link">
+  <link name="ur5_link5">
     <visual>
       <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.095"/>
       <geometry>
@@ -177,7 +177,7 @@
       <inertia ixx="0.0018310395833333333" ixy="0" ixz="0" iyy="0.0018310395833333333" iyz="0" izz="0.0021942"/>
     </inertial>
   </link>
-  <link name="wrist_3_link">
+  <link name="ur5_link6">
     <visual>
       <origin rpy="1.5707963267948966 0.0 0.0" xyz="0.0 0.0 -0.0818"/>
       <geometry>
@@ -197,15 +197,15 @@
     </inertial>
   </link>
   <!-- base_joint fixes base_link to the environment -->
-  <joint name="base_joint" type="fixed">
+  <joint name="ur5_base_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="world"/>
-    <child link="base_link"/>
+    <child link="ur5_link0"/>
   </joint>
   <!-- joints - main serial chain -->
-  <joint name="base_link-base_link_inertia" type="fixed">
-    <parent link="base_link"/>
-    <child link="base_link_inertia"/>
+  <joint name="ur5_base_link-ur5_base_link_inertia" type="fixed">
+    <parent link="ur5_link0"/>
+    <child link="ur5_link0_inertia"/>
     <!-- 'base_link' is REP-103 aligned (so X+ forward), while the internal
            frames of the robot/controller have X+ pointing backwards.
            Use the joint between 'base_link' and 'base_link_inertia' (a dummy
@@ -213,76 +213,76 @@
       -->
     <origin rpy="0 0 3.141592653589793" xyz="0 0 0"/>
   </joint>
-  <joint name="shoulder_pan_joint" type="revolute">
-    <parent link="base_link_inertia"/>
-    <child link="shoulder_link"/>
+  <joint name="ur5_joint1" type="revolute">
+    <parent link="ur5_link0_inertia"/>
+    <child link="ur5_link1"/>
     <origin rpy="0 0 0" xyz="0 0 0.089159"/>
     <axis xyz="0 0 1"/>
     <limit effort="150.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
-  <joint name="shoulder_lift_joint" type="revolute">
-    <parent link="shoulder_link"/>
-    <child link="upper_arm_link"/>
+  <joint name="ur5_joint2" type="revolute">
+    <parent link="ur5_link1"/>
+    <child link="ur5_link2"/>
     <origin rpy="1.570796327 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="150.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
-  <joint name="elbow_joint" type="revolute">
-    <parent link="upper_arm_link"/>
-    <child link="forearm_link"/>
+  <joint name="ur5_joint3" type="revolute">
+    <parent link="ur5_link2"/>
+    <child link="ur5_link3"/>
     <origin rpy="0 0 0" xyz="-0.425 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="150.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
-  <joint name="wrist_1_joint" type="revolute">
-    <parent link="forearm_link"/>
-    <child link="wrist_1_link"/>
+  <joint name="ur5_joint4" type="revolute">
+    <parent link="ur5_link3"/>
+    <child link="ur5_link4"/>
     <origin rpy="0 0 0" xyz="-0.39225 0 0.10915"/>
     <axis xyz="0 0 1"/>
     <limit effort="28.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
-  <joint name="wrist_2_joint" type="revolute">
-    <parent link="wrist_1_link"/>
-    <child link="wrist_2_link"/>
+  <joint name="ur5_joint5" type="revolute">
+    <parent link="ur5_link4"/>
+    <child link="ur5_link5"/>
     <origin rpy="1.570796327 0 0" xyz="0 -0.09465 -1.941303950897609e-11"/>
     <axis xyz="0 0 1"/>
     <limit effort="28.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
-  <joint name="wrist_3_joint" type="revolute">
-    <parent link="wrist_2_link"/>
-    <child link="wrist_3_link"/>
+  <joint name="ur5_joint6" type="revolute">
+    <parent link="ur5_link5"/>
+    <child link="ur5_link6"/>
     <origin rpy="1.570796326589793 3.141592653589793 3.141592653589793" xyz="0 0.0823 -1.688001216681175e-11"/>
     <axis xyz="0 0 1"/>
     <limit effort="28.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"/>
     <dynamics damping="0" friction="0"/>
   </joint>
   <link name="ft_frame"/>
-  <joint name="wrist_3_link-ft_frame" type="fixed">
-    <parent link="wrist_3_link"/>
+  <joint name="ur5_link6-ft_frame" type="fixed">
+    <parent link="ur5_link6"/>
     <child link="ft_frame"/>
     <origin rpy="3.141592653589793 0 0" xyz="0 0 0"/>
   </joint>
   <!-- ROS-Industrial 'base' frame - base_link to UR 'Base' Coordinates transform -->
   <link name="base"/>
-  <joint name="base_link-base_fixed_joint" type="fixed">
+  <joint name="ur5_link0-ur5_base_fixed_joint" type="fixed">
     <!-- Note the rotation over Z of pi radians - as base_link is REP-103
            aligned (i.e., has X+ forward, Y+ left and Z+ up), this is needed
            to correctly align 'base' with the 'Base' coordinate system of
            the UR controller.
       -->
     <origin rpy="0 0 3.141592653589793" xyz="0 0 0"/>
-    <parent link="base_link"/>
+    <parent link="ur5_link0"/>
     <child link="base"/>
   </joint>
   <!-- ROS-Industrial 'flange' frame - attachment point for EEF models -->
   <link name="flange"/>
   <joint name="wrist_3-flange" type="fixed">
-    <parent link="wrist_3_link"/>
+    <parent link="ur5_link6"/>
     <child link="flange"/>
     <origin rpy="0 -1.5707963267948966 -1.5707963267948966" xyz="0 0 0"/>
   </joint>

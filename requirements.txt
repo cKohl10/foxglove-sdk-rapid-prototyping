@@ -2,3 +2,4 @@ foxglove-sdk
 opencv-python
 numpy==1.26.4
 pin==2.7.0
+transforms3d
