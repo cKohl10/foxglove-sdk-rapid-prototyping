@@ -6,39 +6,42 @@ from foxglove.channels import RawImageChannel
 from foxglove.schemas import RawImage, Timestamp
 
 class Camera:
-    def __init__(self, cam):
-        self.cam = cv2.VideoCapture(cam)
+    def __init__(self, cam, live=True):
         self.name = f"cam{cam}"
         self.channel = RawImageChannel("/"+self.name)
+        
+        if live:
+            self.cam = cv2.VideoCapture(cam)
 
-        # Get the default frame width and height
-        self.frame_width = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.frame_height = int(self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    def get_frame(self):
-        ret, frame = self.cam.read()
+    def get_live_img(self):
+        ret, img = self.cam.read()
         if not ret:
             return None
+        timestamp_sec = time.time()
+        return img, timestamp_sec
+
+    def log_rgb_img(self, img, timestamp_sec):
+        width = img.shape[1]
+        height = img.shape[0]
+
+        timestamp_nsec = int((timestamp_sec - int(timestamp_sec)) * 1e9)
+        
         img_msg = RawImage(
             timestamp=Timestamp(
-                sec=int(time.time()),
-                nsec=int((time.time() - int(time.time())) * 1e9),
+                sec=int(timestamp_sec),
+                nsec=int(timestamp_nsec),
             ),
             frame_id=self.name,
-            width=self.frame_width,
-            height=self.frame_height,
+            width=width,
+            height=height,
             encoding="bgr8",
-            step=self.frame_width*3,
-            data=frame.tobytes(),
+            step=width*3,
+            data=img.tobytes(),
         )
-        return img_msg
-
-    def log_data(self, data):
-        self.channel.log(data)
+        self.channel.log(img_msg)
 
     def close(self):
         self.cam.release()
-        cv2.destroyAllWindows()
 
 
 
@@ -54,15 +57,9 @@ if __name__ == "__main__":
     cam_indices = [0, 1, 2]  # Adjust camera indices as needed
     cams = [Camera(cam_indices[i]) for i in range(len(cam_indices))]
 
-    try:
-        print("Streaming data...")
-        while True:
-            for cam in cams:
-                img_msg = cam.get_frame()
-                if img_msg is not None:
-                    cam.log_data(img_msg)
-
-    except KeyboardInterrupt:
-        print("\nShutting down cameras...")
-        cam.close()
-        print("Cleanup complete.")
+    print("Streaming data...")
+    while True:
+        for cam in cams:
+            img, timestamp_sec = cam.get_live_img()
+            if img is not None:
+                cam.log_rgb_img(img, timestamp_sec)
