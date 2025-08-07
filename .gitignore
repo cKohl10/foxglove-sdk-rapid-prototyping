@@ -2,3 +2,4 @@ data/
 .env
 venv/
 *.code-workspace
+__pycache__
