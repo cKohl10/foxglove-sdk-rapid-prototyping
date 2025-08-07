@@ -5,21 +5,26 @@ import cv2
 import time
 import numpy as np
 import pinocchio as pin
+from transforms3d.euler import euler2quat
+from foxglove import Channel
 from foxglove.channels import RawImageChannel
 from foxglove.schemas import RawImage, Timestamp, FrameTransforms, FrameTransform, Vector3, Quaternion
 
 WORLD_FRAME_ID = "world"
 
 class Robot:
-    def __init__(self, urdf_path, name, base_translation):
+    def __init__(self, urdf_path, name, base_translation, base_rotation=None):
         self.name = name
         self.urdf_path = urdf_path
         self.model = pin.buildModelFromUrdf(urdf_path)
         self.data  = self.model.createData()
         self.base_frame_id = f"{name}_base"
         self.base_translation = base_translation
+        self.base_rotation = base_rotation if base_rotation is not None else [-np.pi, np.pi, 0.0]
 
-    def update(self, q):
+        self.torque_channel = Channel("/joint_torques", message_encoding="json")
+
+    def update(self, q, timestamp_nsec=None):
         pin.forwardKinematics(self.model, self.data, q)
         pin.updateFramePlacements(self.model, self.data)
 
@@ -36,12 +41,13 @@ class Robot:
 
             if parent_joint_id == 0:  # Root joint
                 parent_frame_id = WORLD_FRAME_ID
+                quat = euler2quat(self.base_rotation[0], self.base_rotation[1], self.base_rotation[2])
                 transforms.append(
                     FrameTransform(
                         parent_frame_id=parent_frame_id,
                         child_frame_id=frame_name,
                         translation=Vector3(x=self.base_translation[0], y=self.base_translation[1], z=self.base_translation[2]),
-                        rotation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+                        rotation=Quaternion(x=quat[0], y=quat[1], z=quat[2], w=quat[3])
                     )
                 )   
                 continue
@@ -86,8 +92,15 @@ class Robot:
 
         foxglove.log(
             "/tf",
-            FrameTransforms(transforms=transforms)
+            FrameTransforms(transforms=transforms),
+            log_time=timestamp_nsec
         )
+    
+    def update_torque(self, joint_torques, timestamp_nsec=None):
+        torques = {
+            "data": joint_torques.tolist()
+        }
+        self.torque_channel.log(torques, log_time=timestamp_nsec)
 
 def franka_controller():
     """

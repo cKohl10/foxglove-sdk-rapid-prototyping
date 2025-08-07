@@ -41,14 +41,51 @@ from foxglove.channels import RawImageChannel
 from foxglove.schemas import RawImage, Timestamp
 ```
 
-## Step 2 – Define a Camera Object
+## Step 2 – Define a Camera Class
+A straightforward way to iterate with sensors is to create a new object class with a unique message channel. All RawImage messages logged in the future will exist in this channel's namespace. This modular structure allows multiple sensors to be instantiated without message overlap during streaming.
 
 ```python
 class Camera:
-    def __init__(self, cam):
-        self.cam = cv2.VideoCapture(cam)
-        self.name = f"cam{cam}"
+    def __init__(self, cam_idx, live=True):
+        self.name = f"cam{cam_idx}"
         self.channel = RawImageChannel("/"+self.name)
+        
+        if live:
+            self.cam = cv2.VideoCapture(cam_idx) # Returns None if camera is not found
+```
+Next, we will implement a function to retrieve images from our camera, as well a function to log the images. Although one function to handle both is sufficient, splitting will allow us to reuse the logging function when we preload a series of images later on.
+
+```python
+    def get_img(self):
+        timestamp_sec = time.time()
+        ret, img = self.cam.read()
+        if not ret: # Bad read, return None
+            return None, timestamp_sec
+
+        return img, timestamp_sec
+```
+Every Foxglove schema requires a 
+
+```python
+    def log_img(self, img, timestamp_sec):
+        width = img.shape[1]
+        height = img.shape[0]
+
+        timestamp_nsec = int((timestamp_sec - int(timestamp_sec)) * 1e9)
+        
+        img_msg = RawImage(
+            timestamp=Timestamp(
+                sec=int(timestamp_sec),
+                nsec=int(timestamp_nsec),
+            ),
+            frame_id=self.name,
+            width=width,
+            height=height,
+            encoding="bgr8",
+            step=width*3,
+            data=img.tobytes(),
+        )
+        self.channel.log(img_msg)
 ```
 
 ## Step 3 – Stream and Save
