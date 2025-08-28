@@ -1,10 +1,10 @@
 import foxglove
 import argparse
 import cv2
+import os
 from foxglove.channels import RawImageChannel, CameraCalibrationChannel
 from foxglove.schemas import RawImage, CameraCalibration, FrameTransform, Vector3, Quaternion, FrameTransforms
 from transforms3d.quaternions import mat2quat
-import os
 
 WORLD_FRAME_ID = "world"
 
@@ -51,7 +51,6 @@ class Camera:
             self.log_img(img, timestamp_nsec)
 
     def calibrate_mono_camera(self, P, T_cam_world, frame_width, frame_height, timestamp_nsec=None):
-
         camera_info = CameraCalibration(
             frame_id=self.name,
             width=frame_width,
