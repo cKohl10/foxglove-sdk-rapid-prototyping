@@ -1,14 +1,12 @@
 import foxglove
 import argparse
 import logging
-import cv2
 import time
 import numpy as np
 import pinocchio as pin
 from transforms3d.euler import euler2quat
 from foxglove import Channel
-from foxglove.channels import RawImageChannel
-from foxglove.schemas import RawImage, Timestamp, FrameTransforms, FrameTransform, Vector3, Quaternion
+from foxglove.schemas import FrameTransforms, FrameTransform, Vector3, Quaternion
 
 WORLD_FRAME_ID = "world"
 
