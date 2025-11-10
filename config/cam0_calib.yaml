@@ -1,0 +1,24 @@
+# Camera calibration parameters for RGB camera
+# Camera matrix (3x3) in the format [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+# where fx, fy are focal lengths in pixels, cx, cy are principal point coordinates
+camera_matrix: [800.0, 0.0, 320.0, 0.0, 800.0, 240.0, 0.0, 0.0, 1.0]
+
+# Distortion coefficients [k1, k2, p1, p2, k3]
+# k1, k2, k3: radial distortion coefficients
+# p1, p2: tangential distortion coefficients
+dist_coeffs: [0.1, -0.05, 0.001, 0.001, 0.0]
+
+distortion_model: "plumb_bob"
+
+# Camera pose in the world coordinate system
+pose:
+  # Translation in meters
+  translation:
+    x: -2.0
+    y: 0.0
+    z: 2.0
+  # Rotation as RPY
+  rotation:
+    roll: 0.0
+    pitch: -30.0
+    yaw: 0.0

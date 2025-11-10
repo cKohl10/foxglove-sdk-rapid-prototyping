@@ -58,11 +58,11 @@ class Camera:
         """
         
         K = M_in[:3, :3] # Calibration matrix
-        P = np.concatenate((K, np.zeros((3, 1))), axis=1) # Projection matrix
+        P = np.concatenate((K, np.zeros((3, 1))), axis=1) # Projection matrix for monocular camera
         R_w = M_ex[:3, :3].T # Rotation matrix from world frame to camera frame
         t= M_ex[:3, 3] # Translation vector from camera frame to world frame
         c_w = -R_w @ t # Camera center in world frame
-        q = mat2quat(R_w)
+        q = mat2quat(R_w) # Rotations are represented as quaternions for the FrameTransform schema
 
         camera_info = CameraCalibration(
             frame_id=self.name,

@@ -38,8 +38,6 @@ pip install foxglove-sdk opencv-python transforms3d
 ## The Basics of a Camera
 In a new python file, import Foxglove relavent message schemas. We will use a RawImage schema to stream video data, a CameraCalibration schema to store intrinsic camera data, and finally a FrameTransform to store the camera's pose as a translation vector and orientation quaternion. Refer to the [SDK concepts](https://docs.foxglove.dev/docs/sdk/concepts) if you are unfamiliar with schemas and channels.
 
-![camera_diagram](media/camera_diagram.png)
-
 
 ```python
 import foxglove
@@ -138,7 +136,12 @@ Add an *Image Panel*, assign it the topic "/cam_0" by clicking the panel with th
 ![Hello!](/media/level1.png)
 
 ## Step 4 – Calibrate Your Camera
-It is often beneficial in robotics applications to know the location of a camera and how much it is distorting an image. 
+In many applications, visualizing the placement and view of cameras in 3D space can be equally as important as viewing their video streams. The CameraCalibration schema is a message that only needs to be logged once to vizualize a projection of a camera's feed in 3D space (*Note: the CameraCalibration schema can also be used to undistort an image in the image panel*). 
+
+
+![camera_diagram](media/camera_diagram.png)
+
+
 ```python
     def calibrate_mono_camera(self, M_in, M_ex, frame_width, frame_height, timestamp_nsec=None):
         """
@@ -147,11 +150,11 @@ It is often beneficial in robotics applications to know the location of a camera
         """
         
         K = M_in[:3, :3] # Calibration matrix
-        P = np.concatenate((K, np.zeros((3, 1))), axis=1) # Projection matrix
+        P = np.concatenate((K, np.zeros((3, 1))), axis=1) # Projection matrix for monocular camera
         R_w = M_ex[:3, :3].T # Rotation matrix from world frame to camera frame
         t= M_ex[:3, 3] # Translation vector from camera frame to world frame
         c_w = -R_w @ t # Camera center in world frame
-        q = mat2quat(R_w)
+        q = mat2quat(R_w) # Rotations are represented as quaternions for the FrameTransform schema
 
         camera_info = CameraCalibration(
             frame_id=self.name,
